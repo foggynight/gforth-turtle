@@ -1,0 +1,3 @@
+[submodule "gforth-sdl2"]
+	path = gforth-sdl2
+	url = https://github.com/foggynight/gforth-sdl2.git
