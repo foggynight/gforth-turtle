@@ -4,8 +4,8 @@
 
 \ config -----------------------------------------------------------------------
 
-512 constant WINDOW_W
-512 constant WINDOW_H
+1024 constant WINDOW_W
+1024 constant WINDOW_H
 
 144 constant FRAMES/SECOND
 
@@ -14,9 +14,14 @@
 : -roll ( x0 .. xn n -- xn x0 .. xn-1 )   { n } n 0 do n roll loop ;
 : drop-wordlist ( n -- )   >r get-order 1- r> 1+ roll drop set-order ;
 
-: deg>rad ( r -- r )   pi 180 0 d>f f/ f* ;
-: xsiny ( x y -- n )   0 d>f deg>rad fsin 0 d>f f* f>d drop ;
-: xcosy ( x y -- n )   0 d>f deg>rad fcos 0 d>f f* f>d drop ;
+: f-rot ( f: x y z -- f: z x y )   frot frot ;
+: f2drop ( f: x y -- )   fdrop fdrop ;
+: f2dup ( f: x y -- f: x y x y )   fover fover ;
+: fdeg>rad ( f: x -- f: x )   pi f* 180e f/ ;
+: fwrap ( f: n hi -- f: n )
+  fover f0< if f2dup f+ else
+  f2dup f>  if f2dup f- else
+               fover    then then f-rot f2drop ;
 
 \ window -----------------------------------------------------------------------
 
@@ -66,29 +71,30 @@ variable render
 
 \ turtle -----------------------------------------------------------------------
 
-0 constant INIT_TURTLE_X
-0 constant INIT_TURTLE_Y
+0e fconstant INIT_TURTLE_X
+0e fconstant INIT_TURTLE_Y
+0e fconstant INIT_TURTLE_HEAD
 
-variable turtle-x INIT_TURTLE_X turtle-x ! \ (x,y) position, center-origin
-variable turtle-y INIT_TURTLE_Y turtle-y !
-variable turtle-head 0 turtle-head ! \ heading (degrees), right-origin, cw-rot
+fvariable turtle-x INIT_TURTLE_X turtle-x f! \ (x,y) position, center-0
+fvariable turtle-y INIT_TURTLE_Y turtle-y f!
+fvariable turtle-head INIT_TURTLE_HEAD turtle-head f! \ heading deg, right-0, cw-rot
 variable turtle-draw turtle-draw on
 
-: x-rel>abs   WINDOW_W/2 + ;
-: y-rel>abs   WINDOW_H/2 + ;
-: pos-rel>abs ( x y -- x y )   y-rel>abs swap x-rel>abs swap ;
+: x-rel>abs ( f: x -- x )   f>d drop WINDOW_W/2 + ;
+: y-rel>abs ( f: y -- y )   f>d drop WINDOW_H/2 + ;
+: pos-rel>abs ( f: x y -- x y )   y-rel>abs x-rel>abs swap ;
 
-: turtle-pos ( -- x y )   turtle-x @ turtle-y @ ;
+: turtle-pos ( -- f: x y )   turtle-x f@ turtle-y f@ ;
 : turtle-pos/abs ( -- x y )   turtle-pos pos-rel>abs ;
-: turtle-!pos ( nx ny -- )   turtle-y ! turtle-x ! ;
+: turtle-!pos ( f: x y -- )   turtle-y f! turtle-x f! ;
 
 : draw-background ( -- )   rgb-black !draw-rgb draw-clear ;
 : draw-turtle ( -- )   rgb-red !draw-rgb turtle-pos/abs draw-point ;
 
-: ?draw-path ( ox oy nx ny -- )
+: ?draw-path ( f: ox oy nx ny -- )
   turtle-draw @ if
     rgb-red !draw-rgb
-    pos-rel>abs 2swap pos-rel>abs draw-line
+    pos-rel>abs pos-rel>abs draw-line
   then ;
 
 \ Sleep after present prevents render backbuffer corruption. Not great but works
@@ -101,39 +107,40 @@ create event SDL_Event allot
   repeat
   draw-turtle window-present 1 window-sleep ;
 
-: put-turtle ( nx ny -- )
-  turtle-x @ turtle-y @ { nx ny ox oy }
+: put-turtle ( f: nx ny -- )
+  turtle-x f@ turtle-y f@ { f: nx f: ny f: ox f: oy }
   nx ny turtle-!pos  ox oy nx ny ?draw-path  update-turtle ;
 
-: move-turtle ( dx dy -- )
-  turtle-x @ turtle-y @ { dx dy ox oy }
-  ox dx + oy dy + put-turtle ;
+: move-turtle ( f: dx dy -- )
+  turtle-x f@ turtle-y f@ { f: dx f: dy f: ox f: oy }
+  ox dx f+ oy dy f+ put-turtle ;
 
-: rot-turtle ( n -- )   turtle-head @ + 360 mod turtle-head !  update-turtle ;
-: walk-turtle ( n -- )
-  turtle-x @ turtle-y @ turtle-head @ { n x y h }
-  n h xcosy x +  n h xsiny y + put-turtle ;
+: rot-turtle ( f: n -- )
+  turtle-head f@ f+ 360e fwrap  turtle-head f!  update-turtle ;
+: walk-turtle ( f: n -- )
+  turtle-x f@ turtle-y f@ turtle-head f@ fdeg>rad { f: n f: x f: y f: h }
+  h fcos n f* x f+  h fsin n f* y f+  put-turtle ;
 
 \ public -----------------------------------------------------------------------
 
 wordlist >order definitions
 
-: pos ( -- x y )   turtle-pos ;
-: head ( -- n )   turtle-head @ ;
+: pos ( -- f: x y )   turtle-pos ;
+: head ( -- f: n )   turtle-head f@ ;
 
-: put ( nx ny -- )   put-turtle ;
-: x ( -- x )   turtle-x @ ;
-: y ( -- x )   turtle-y @ ;
-: !x ( nx -- )   turtle-y @ put ;
-: !y ( ny -- )   turtle-x @ swap put ;
-: !xy ( nx ny -- )   put ;
-: home ( -- )   0 0 put ;
+: put ( f: nx ny -- )   put-turtle ;
+: x ( -- f: x )   turtle-x f@ ;
+: y ( -- f: x )   turtle-y f@ ;
+: !x ( f: nx -- )   turtle-y f@ put ;
+: !y ( f: ny -- )   turtle-x f@ fswap put ;
+: !xy ( f: nx ny -- )   put ;
+: home ( -- )   0e 0e put ;
 
-: move ( dx dy -- )   move-turtle ;
-: left ( n -- )   negate rot-turtle ;
-: right ( n -- )   rot-turtle ;
-: walk ( n -- )   walk-turtle ;
-: back ( n -- )   negate walk ;
+: move ( f: dx dy -- )   move-turtle ;
+: left ( f: n -- )   fnegate rot-turtle ;
+: right ( f: n -- )   rot-turtle ;
+: walk ( f: n -- )   walk-turtle ;
+: back ( f: n -- )   fnegate walk ;
 
 : mv move ;
 : lt left ;
@@ -143,6 +150,6 @@ wordlist >order definitions
 : fd walk ;
 : bk back ;
 
-: main   window-init draw-background update-turtle ;
+: turtle   window-init draw-background update-turtle ;
 
 1 drop-wordlist
