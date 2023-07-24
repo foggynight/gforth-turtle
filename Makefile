@@ -1,3 +1,3 @@
 .PHONY: all
 all:
-	gforth turtle.fth -e "main"
+	gforth turtle.fth -e "turtle"
