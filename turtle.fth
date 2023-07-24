@@ -4,8 +4,8 @@
 
 \ config -----------------------------------------------------------------------
 
-1024 constant WINDOW_W
-1024 constant WINDOW_H
+720 constant WINDOW_W
+720 constant WINDOW_H
 
 144 constant FRAMES/SECOND
 
@@ -26,24 +26,39 @@
 
 : drop-wordlist ( n -- )   >r get-order 1- r> 1+ roll drop set-order ;
 
+\ color ------------------------------------------------------------------------
+
+: /rgb   [ 3 chars ] literal ;
+: rgb   here create /rgb allot /rgb erase ;
+: rgb@   { adr } 3 0 do adr i chars + c@ loop ;
+: rgb!   { adr } -1 2 do adr i chars + c! 1 -loop ;
+
+rgb color-turtle
+
+: rgb-black    0   0   0 ;
+: rgb-red    255   0   0 ;
+: rgb-green    0 255   0 ;
+: rgb-blue     0   0 255 ;
+: rgb-white  255 255 255 ;
+
 \ grid -------------------------------------------------------------------------
 
 WINDOW_W constant GRID_W
 WINDOW_H constant GRID_H
-GRID_W GRID_H * constant GRID_SIZE
+GRID_W GRID_H * constant GRID_WH
 
-create grid GRID_SIZE chars allot
-grid GRID_SIZE chars erase
+GRID_WH 3 chars * constant /grid
+create grid /grid allot  grid /grid erase
 
-: grid-ref ( x y -- a )   WINDOW_H * + grid + ;
-: grid@ ( a -- c )   c@ ;
-: grid! ( c a -- )   c! ;
-
-: grid-on ( a -- )   true swap grid! ;
-: grid-off ( a -- )   false swap grid! ;
+: grid-ref ( x y -- adr )   WINDOW_H * + /rgb * grid + ;
+: grid@ ( adr -- r g b )   rgb@ ;
+: grid! ( r g b adr -- )   rgb! ;
 
 : grid-within? { x y -- ? }   x 0 GRID_W within  y 0 GRID_H within  and ;
-: grid-clear ( -- )   grid GRID_SIZE chars erase ;
+
+: grid-fill { r g b -- }
+  GRID_H 0 do GRID_W 0 do r g b i j grid-ref grid! loop loop ;
+: grid-clear ( -- )   0 0 0 grid-fill ;
 
 \ window -----------------------------------------------------------------------
 
@@ -62,12 +77,6 @@ variable window
 variable render
 
 : window-title   s\" gforth-turtle\0" drop ;
-
-: rgb-black    0   0   0 ;
-: rgb-red    255   0   0 ;
-: rgb-green    0 255   0 ;
-: rgb-blue     0   0 255 ;
-: rgb-white  255 255 255 ;
 
 : init-sdl2   SDL_INIT_VIDEO SDL_Init drop ;
 : init-window
@@ -90,14 +99,11 @@ variable render
 : draw-point ( x y -- )   render @ 2 -roll SDL_RenderDrawPoint drop ;
 : draw-line ( x0 y0 x1 y1 -- )   render @ 4 -roll SDL_RenderDrawLine drop ;
 
-: draw-background ( -- )   rgb-black !draw-rgb draw-clear ;
 : draw-grid ( -- )
   WINDOW_H 0 do
     WINDOW_W 0 do
-      j i grid-ref grid@ if
-        rgb-red !draw-rgb
-        j i draw-point
-      then
+      i j grid-ref grid@ !draw-rgb
+      i j draw-point
     loop
   loop ;
 
@@ -106,6 +112,8 @@ variable render
 0e fconstant INIT_TURTLE_X
 0e fconstant INIT_TURTLE_Y
 0e fconstant INIT_TURTLE_HEAD
+
+255 0 0 color-turtle rgb!
 
 fvariable turtle-x INIT_TURTLE_X turtle-x f! \ (x,y) position, center-0
 fvariable turtle-y INIT_TURTLE_Y turtle-y f!
@@ -120,9 +128,10 @@ variable turtle-draw turtle-draw on
 
 : turtle-pos ( -- f: x y )   turtle-x f@ turtle-y f@ ;
 : turtle-pos/abs ( -- x y )   turtle-pos pos-rel>abs ;
-: turtle-!pos ( f: x y -- )   turtle-y f! turtle-x f! ;
+: !turtle-pos ( f: x y -- )   turtle-y f! turtle-x f! ;
 
-: (mark-point) { x y -- }   x y grid-within? if x y grid-ref grid-on then ;
+: (mark-point) { x y -- }
+  x y grid-within? if color-turtle rgb@ x y grid-ref grid! then ;
 : mark-point ( f: x y -- )   pos-rel>abs (mark-point) ;
 : mark-turtle ( -- )   turtle-pos mark-point ;
 
@@ -179,11 +188,11 @@ create event SDL_Event allot
     et SDL_QUIT = if window-quit exit then
   repeat
   turtle-draw? if mark-turtle then
-  draw-background draw-grid ( draw-turtle ) window-present ;
+  draw-grid ( draw-turtle ) window-present ;
 
 : put-turtle ( f: x1 y1 -- )
   turtle-x f@ turtle-y f@ { f: x1 f: y1 f: x0 f: y0 }
-  x1 y1 turtle-!pos  turtle-draw? if x0 y0 x1 y1 mark-line then  update-turtle ;
+  x1 y1 !turtle-pos  turtle-draw? if x0 y0 x1 y1 mark-line then  update-turtle ;
 
 : move-turtle ( f: dx dy -- )
   turtle-x f@ turtle-y f@ { f: dx f: dy f: x0 f: y0 }
@@ -201,28 +210,35 @@ create event SDL_Event allot
 wordlist >order definitions
 
 : pos ( -- f: x y )   turtle-pos ;
-: head ( -- f: n )   turtle-head f@ ;
-
 : put ( f: x y -- )   put-turtle ;
 : x ( -- f: x )   turtle-x f@ ;
 : y ( -- f: x )   turtle-y f@ ;
+: xy ( -- f: x y )   pos ;
 : !x ( f: x -- )   turtle-y f@ put ;
 : !y ( f: y -- )   turtle-x f@ fswap put ;
 : !xy ( f: x y -- )   put ;
-: home ( -- )   0e 0e put ;
-: clear ( -- )   grid-clear update-turtle ;
+
+: head ( -- f: n )   turtle-head f@ ;
+: rot ( f: n -- )   turtle-head f! ;
 
 : move ( f: dx dy -- )   move-turtle ;
 : left ( f: n -- )   fnegate rot-turtle ;
 : right ( f: n -- )   rot-turtle ;
 : walk ( f: n -- )   walk-turtle ;
 : back ( f: n -- )   fnegate walk ;
+: home ( -- )   0e 0e put ;
+
+: color ( -- r g b )   color-turtle rgb@ ;
+: !color ( r g b -- )   color-turtle rgb! update-turtle ;
+: fill ( r g b -- )   grid-fill update-turtle ;
+: clear ( -- )   grid-clear update-turtle ;
 
 : mv move ;
 : lt left ;
 : lf left ;
 : rt right ;
 : wk walk ;
+: forward walk ;
 : fd walk ;
 : bk back ;
 
