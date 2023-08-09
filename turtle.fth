@@ -219,6 +219,7 @@ wordlist >order definitions
 : !xy ( f: x y -- )   put ;
 
 : head ( -- f: n )   turtle-head f@ ;
+: !head ( f: n -- )   turtle-head f! ;
 : rot ( f: n -- )   turtle-head f! ;
 
 : move ( f: dx dy -- )   move-turtle ;
@@ -226,7 +227,7 @@ wordlist >order definitions
 : right ( f: n -- )   rot-turtle ;
 : walk ( f: n -- )   walk-turtle ;
 : back ( f: n -- )   fnegate walk ;
-: home ( -- )   0e 0e put ;
+: home ( -- )   0e 0e put  0e !head ;
 
 : color ( -- r g b )   color-turtle rgb@ ;
 : !color ( r g b -- )   color-turtle rgb! update-turtle ;
