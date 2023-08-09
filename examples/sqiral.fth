@@ -15,4 +15,4 @@ fvariable len  LEN_INIT len f!
 : square ( -- )   4 0 do len f@ wk  LEN_STEP len f+!  ROT_STEP rt loop ;
 : sqiral ( n -- )   LEN_INIT len f!  0 do random-color square loop ;
 
-: main ( -- )   turtle  home clear  360 sqiral ;
+: main ( -- )   turtle  360 sqiral ;

@@ -192,14 +192,12 @@ create event SDL_Event allot
 
 : put-turtle ( f: x1 y1 -- )
   turtle-x f@ turtle-y f@ { f: x1 f: y1 f: x0 f: y0 }
-  x1 y1 !turtle-pos  turtle-draw? if x0 y0 x1 y1 mark-line then  update-turtle ;
-
+  x1 y1 !turtle-pos  turtle-draw? if x0 y0 x1 y1 mark-line then ;
 : move-turtle ( f: dx dy -- )
   turtle-x f@ turtle-y f@ { f: dx f: dy f: x0 f: y0 }
   x0 dx f+ y0 dy f+ put-turtle ;
 
-: rot-turtle ( f: n -- )
-  turtle-head f@ f+ 360e fwrap  turtle-head f!  update-turtle ;
+: rot-turtle ( f: n -- )   turtle-head f@ f+ 360e fwrap  turtle-head f! ;
 
 : walk-turtle ( f: n -- )
   turtle-x f@ turtle-y f@ turtle-head f@ fdeg>rad { f: n f: x f: y f: h }
@@ -210,7 +208,8 @@ create event SDL_Event allot
 wordlist >order definitions
 
 : pos ( -- f: x y )   turtle-pos ;
-: put ( f: x y -- )   put-turtle ;
+: (put) ( f: x y -- )   put-turtle ;
+: put ( f: x y -- )   (put) update-turtle ;
 : x ( -- f: x )   turtle-x f@ ;
 : y ( -- f: x )   turtle-y f@ ;
 : xy ( -- f: x y )   pos ;
@@ -219,20 +218,24 @@ wordlist >order definitions
 : !xy ( f: x y -- )   put ;
 
 : head ( -- f: n )   turtle-head f@ ;
-: !head ( f: n -- )   turtle-head f! ;
-: rot ( f: n -- )   turtle-head f! ;
+: (!head) ( f: n -- )   turtle-head f! ;
+: !head ( f: n -- )   (!head) update-turtle ;
 
-: move ( f: dx dy -- )   move-turtle ;
-: left ( f: n -- )   fnegate rot-turtle ;
-: right ( f: n -- )   rot-turtle ;
-: walk ( f: n -- )   walk-turtle ;
+: move ( f: dx dy -- )   move-turtle update-turtle ;
+: left ( f: n -- )   fnegate rot-turtle update-turtle ;
+: right ( f: n -- )   rot-turtle update-turtle ;
+: walk ( f: n -- )   walk-turtle update-turtle ;
 : back ( f: n -- )   fnegate walk ;
-: home ( -- )   0e 0e put  0e !head ;
+: (home) ( -- )   0e 0e (put)  0e (!head) ;
+: home ( -- )   (home) update-turtle ;
 
 : color ( -- r g b )   color-turtle rgb@ ;
 : !color ( r g b -- )   color-turtle rgb! update-turtle ;
 : fill ( r g b -- )   grid-fill update-turtle ;
-: clear ( -- )   grid-clear update-turtle ;
+: (clear) ( -- )   grid-clear ;
+: clear ( -- )   (clear) update-turtle ;
+
+: update ( -- )   update-turtle ;
 
 : mv move ;
 : lt left ;
@@ -243,7 +246,7 @@ wordlist >order definitions
 : fd walk ;
 : bk back ;
 
-: turtle   window-init update-turtle ;
+: turtle   window-init (home) (clear) update ;
 : turtle-bye   window-quit ;
 
 \ 1 drop-wordlist
