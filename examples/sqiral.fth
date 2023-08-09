@@ -9,10 +9,10 @@ utime drop seed !
 
 : f+! ( adr f: n -- )   { adr } adr f@ f+ adr f! ;
 
+: random-color ( -- )   3 0 do 255 random loop !color ;
+
 fvariable len  LEN_INIT len f!
 : square ( -- )   4 0 do len f@ wk  LEN_STEP len f+!  ROT_STEP rt loop ;
+: sqiral ( n -- )   LEN_INIT len f!  0 do random-color square loop ;
 
-: random-color ( -- )   3 0 do 255 random loop !color ;
-: sqiral ( n -- )   0 do random-color square loop ;
-
-: main ( -- )   turtle 360 sqiral ;
+: main ( -- )   turtle  home clear  360 sqiral ;
